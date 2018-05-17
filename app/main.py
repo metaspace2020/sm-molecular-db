@@ -3,6 +3,7 @@ from os.path import dirname
 sys.path.append(dirname(dirname(__file__)))
 import falcon
 
+import app.config
 from app import log
 from app.middleware import DatabaseSessionManager
 from app.database import db_session, init_session
@@ -12,8 +13,17 @@ from app.api import molecules
 from app.api import isotopic_pattern
 from app.errors import AppError
 
+import app.isotope_storage as ips
+
 LOG = log.get_logger()
 
+init_session()
+
+mol_formulas = ips.molecularFormulaSets(db_session)
+isotope_pattern_storage = ips.IsotopePatternStorage(mol_formulas, app.config.ISOTOPE_STORAGE_DIR)
+if app.config.ISOTOPE_S3_BUCKET:
+    isotope_pattern_storage.sync_from_s3(app.config.ISOTOPE_S3_BUCKET,
+                                         app.config.ISOTOPE_S3_PREFIX)
 
 class App(falcon.API):
     def __init__(self, *args, **kwargs):
@@ -32,11 +42,14 @@ class App(falcon.API):
         self.add_route('/v1/isotopic_pattern/{ion}/{instr}/{res_power}/{at_mz}/{charge}',
                        isotopic_pattern.IsotopicPatternItem())
 
+        self.req_options.auto_parse_form_urlencoded = True  # so that the handler can access POST params
+        self.add_route('/v1/isotopic_patterns/{db_id}/{charge}/{pts_per_mz}',
+                       ips.IsotopePatternCollection(isotope_pattern_storage))
+
         # self.add_route('/v1/sfs', formulae.SumFormulaCollection())
         # self.add_route('/v1/sfs/{sf}/molecules', formulae.SumFormulaCollection())
         self.add_error_handler(AppError, AppError.handle)
 
-init_session()
 middleware = [
     # AuthHandler(), JSONTranslator(),
     DatabaseSessionManager(db_session)

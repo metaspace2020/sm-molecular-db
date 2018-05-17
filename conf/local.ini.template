@@ -13,3 +13,9 @@ level=DEBUG
 
 [database]
 echo=yes
+
+[isotope_storage]
+directory=/tmp/isotope_patterns
+s3bucket=sm-engine-isotope-patterns
+s3prefix=isotope_patterns
+cachesize=1
