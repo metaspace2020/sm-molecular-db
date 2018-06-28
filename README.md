@@ -1,3 +1,5 @@
+# This project has been migrated into https://github.com/metaspace2020/metaspace
+
 # Molecular Database RESTful Web API
 
 HMDB, ChEBI and other molecular databases.
